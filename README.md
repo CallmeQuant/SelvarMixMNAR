@@ -5,7 +5,7 @@ when observations may be missing not at random. It is the direct R
 implementation accompanying the NeurIPS 2025 paper *A Unified Framework for
 Variable Selection in Model-Based Clustering with Missing Not at Random* by
 Binh H. Ho, Long Nguyen Chi, TrungTin Nguyen, Binh T. Nguyen, Van Ha Hoang,
-and Christopher Drovandi.
+and Christopher Drovandi ([see arxiv version here](https://arxiv.org/abs/2505.19093)).
 
 The package combines three statistical components:
 
