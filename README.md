@@ -30,16 +30,42 @@ sensitivity model rather than MNARzj.
 
 ## Installation
 
-From the repository root, the following command installs declared
-dependencies and resolves `gcimputeR` at the commit pinned in `DESCRIPTION`:
+Install the development version directly from GitHub:
 
 ```r
 install.packages("remotes")
-remotes::install_local(".", dependencies = TRUE, build_vignettes = TRUE)
+remotes::install_github(
+  "CallmeQuant/SelvarMixMNAR",
+  dependencies = TRUE
+)
+
+library(SelvarMixMNAR)
 ```
 
-For release validation after dependencies have been provisioned, build from
-the parent directory and install the resulting archive:
+Setting `dependencies = TRUE` installs the optional packages used by the
+missing-data and covariance-distance workflows. It also resolves
+`gcimputeR` at the commit pinned in `DESCRIPTION`. Installation compiles the
+package's C++ source, so Windows users need the version of Rtools that matches
+their R installation.
+
+Users who already have `devtools` installed may equivalently run
+`devtools::install_github("CallmeQuant/SelvarMixMNAR", dependencies = TRUE)`.
+
+### Installation from a local checkout
+
+Package developers can install a local checkout by supplying the directory
+that contains `DESCRIPTION`:
+
+```r
+remotes::install_local(
+  "path/to/SelvarMixMNAR",
+  dependencies = TRUE,
+  build_vignettes = FALSE
+)
+```
+
+For release validation, build from the parent directory and install the
+resulting source archive:
 
 ```sh
 R CMD build SelvarMixMNAR
@@ -52,7 +78,7 @@ default uses `gcimputeR`; `missRanger` is available through
 `shapes` package. The default Euclidean/Frobenius distance is implemented
 internally.
 
-## A first fit
+## A first example
 
 The following example has two clustering variables, two redundant
 variables, and two independent noise variables. `latent_class` is retained
