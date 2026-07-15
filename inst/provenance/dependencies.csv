@@ -1,0 +1,19 @@
+package,role,required_for,observed_version,source_or_repository,source_pin,declared_license,local_status
+R,interpreter,all workflows,4.5.1,R Project,audited 2026-07-15,GPL-2 | GPL-3,installed
+methods,S4 infrastructure,package load and native interfaces,4.5.1,R distribution,audited with R 4.5.1,part of R,installed
+stats,statistical utilities,initialization and MNAR transformations,4.5.1,R distribution,audited with R 4.5.1,part of R,installed
+utils,namespace and trace utilities,ranking diagnostics,4.5.1,R distribution,audited with R 4.5.1,part of R,installed
+parallel,process parallelism,ranking and SRUW candidate evaluation,4.5.1,R distribution,audited with R 4.5.1,part of R,installed
+Rcpp,R/native interface,all compiled workflows,1.1.1,CRAN,audited 2026-07-15,GPL (>= 2),installed
+RcppArmadillo,C++ linear algebra,all compiled workflows,14.6.3-1,CRAN,audited 2026-07-15,GPL (>= 2),installed
+glassoFast,graphical-lasso updates,penalized ranking,1.0.1,CRAN,audited 2026-07-15,GPL (>= 3),installed
+Rmixmod,Gaussian-mixture backend,requested Rmixmod SRUW models,2.1.10,CRAN,audited 2026-07-15,GPL-3,installed
+mclust,initialization and Gaussian-mixture backend,mclust initialization or SRUW models,6.1.1,CRAN,audited 2026-07-15,GPL (>= 2),installed
+matrixStats,column summaries,ranking preprocessing,1.5.0,CRAN,audited 2026-07-15,Artistic-2.0,installed
+igraph,graph Laplacian,spectral penalty weights,2.2.2,CRAN,audited 2026-07-15,GPL (>= 2),installed
+gcimputeR,Gaussian-copula imputation,optional copula imputation,0.1.1,GitHub udellgroup/gcimputeR,0d7c0e6fd3be9ff7d1c3a3f8100d91e721dad468,GPL-2,installed
+missRanger,random-forest imputation,optional non-copula imputation,2.6.1,CRAN,audited 2026-07-15,GPL (>= 2),installed
+shapes,covariance distance,optional non-Euclidean distance methods,1.2.8,CRAN,audited 2026-07-15,GPL-2,installed in isolated verification library
+testthat,test runner,tests,3.2.3,CRAN,audited 2026-07-15,MIT + file LICENSE,installed
+knitr,vignette engine,vignette build,1.51,CRAN,audited 2026-07-15,GPL,installed
+TeX Live with BibTeX,documentation toolchain,source-vignette build,2025,local TeX Live,"pdfTeX 1.40.28; BibTeX 0.99d",mixed upstream licenses,installed locally; CI provisions TinyTeX

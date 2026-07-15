@@ -1,0 +1,383 @@
+\documentclass[10pt]{article}\usepackage[]{graphicx}\usepackage[]{xcolor}
+% maxwidth is the original width if it is less than linewidth
+% otherwise use linewidth (to make sure the graphics do not exceed the margin)
+\makeatletter
+\def\maxwidth{ %
+  \ifdim\Gin@nat@width>\linewidth
+    \linewidth
+  \else
+    \Gin@nat@width
+  \fi
+}
+\makeatother
+
+\definecolor{fgcolor}{rgb}{0.345, 0.345, 0.345}
+\newcommand{\hlnum}[1]{\textcolor[rgb]{0.686,0.059,0.569}{#1}}%
+\newcommand{\hlsng}[1]{\textcolor[rgb]{0.192,0.494,0.8}{#1}}%
+\newcommand{\hlcom}[1]{\textcolor[rgb]{0.678,0.584,0.686}{\textit{#1}}}%
+\newcommand{\hlopt}[1]{\textcolor[rgb]{0,0,0}{#1}}%
+\newcommand{\hldef}[1]{\textcolor[rgb]{0.345,0.345,0.345}{#1}}%
+\newcommand{\hlkwa}[1]{\textcolor[rgb]{0.161,0.373,0.58}{\textbf{#1}}}%
+\newcommand{\hlkwb}[1]{\textcolor[rgb]{0.69,0.353,0.396}{#1}}%
+\newcommand{\hlkwc}[1]{\textcolor[rgb]{0.333,0.667,0.333}{#1}}%
+\newcommand{\hlkwd}[1]{\textcolor[rgb]{0.737,0.353,0.396}{\textbf{#1}}}%
+\let\hlipl\hlkwb
+
+\usepackage{framed}
+\makeatletter
+\newenvironment{kframe}{%
+ \def\at@end@of@kframe{}%
+ \ifinner\ifhmode%
+  \def\at@end@of@kframe{\end{minipage}}%
+  \begin{minipage}{\columnwidth}%
+ \fi\fi%
+ \def\FrameCommand##1{\hskip\@totalleftmargin \hskip-\fboxsep
+ \colorbox{shadecolor}{##1}\hskip-\fboxsep
+     % There is no \\@totalrightmargin, so:
+     \hskip-\linewidth \hskip-\@totalleftmargin \hskip\columnwidth}%
+ \MakeFramed {\advance\hsize-\width
+   \@totalleftmargin\z@ \linewidth\hsize
+   \@setminipage}}%
+ {\par\unskip\endMakeFramed%
+ \at@end@of@kframe}
+\makeatother
+
+\definecolor{shadecolor}{rgb}{.97, .97, .97}
+\definecolor{messagecolor}{rgb}{0, 0, 0}
+\definecolor{warningcolor}{rgb}{1, 0, 1}
+\definecolor{errorcolor}{rgb}{1, 0, 0}
+\newenvironment{knitrout}{}{} % an empty environment to be redefined in TeX
+
+\usepackage{alltt}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{array,booktabs,float}
+\usepackage[margin=1in]{geometry}
+\usepackage[hidelinks]{hyperref}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.65em}
+\setlength{\emergencystretch}{2em}
+
+\title{Variable Selection and MNARz Clustering\\
+with \texttt{SelvarMixMNAR}}
+\author{}
+\date{}
+
+%\VignetteIndexEntry{Variable Selection and MNARz Clustering with SelvarMixMNAR}
+%\VignetteEngine{knitr::knitr}
+%\VignetteEncoding{UTF-8}
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\begin{document}
+
+\maketitle
+
+
+
+\texttt{SelvarMixMNAR} is the direct R implementation accompanying the
+NeurIPS 2025 paper \emph{A Unified Framework for Variable Selection in
+Model-Based Clustering with Missing Not at Random}
+\cite{ho2025unifiedmbcmnar}. The package combines a penalized Gaussian-mixture
+ranking, SRUW variable roles, and a MNARz missingness model.
+
+For incomplete data, \texttt{decoupled\_mnarz} estimates SRUW roles from a
+completed working matrix before fitting an MNARz mixture, whereas
+\texttt{joint\_mnarz} estimates the SRUW and missingness terms under one
+observed-data criterion.
+
+\section{SRUW roles and the fitted MNARz mechanism}
+
+For observation $Y_i \in \mathbb{R}^p$, the SRUW factorization uses three
+disjoint role sets and one predictor subset:
+
+\begin{itemize}
+\item $S$: variables that define the Gaussian mixture;
+\item $R \subseteq S$: clustering variables used as predictors of redundant
+ variables;
+\item $U$: redundant variables modeled by a common Gaussian regression on
+ $Y_i^R$;
+\item $W$: variables modeled independently of the clustering block.
+\end{itemize}
+
+Writing $K$ for the number of mixture components, the factorization has the
+form
+\[
+f(Y_i)
+= f_{\mathrm{clust}}(Y_i^S \mid K,m)
+ f_{\mathrm{reg}}(Y_i^U \mid Y_i^R,r)
+ f_{\mathrm{indep}}(Y_i^W \mid l).
+\]
+Here $m$, $r$, and $l$ index the covariance models for the clustering,
+regression, and independent blocks, respectively.
+
+The fitted missingness class is MNARz. If $C_{ij}=1$ denotes a missing entry
+and $Z_i=k$ denotes latent component membership, then
+\[
+\Pr(C_{ij}=1 \mid Z_i=k)=\rho_k.
+\]
+Thus each component has one missingness probability shared across variables.
+MNARy, in which missingness depends directly on an unobserved value, and
+MNARzj, in which the class effect varies by coordinate, require different
+likelihoods. Identifiability relies on the MNARz assumptions stated in the
+accompanying paper in addition to numerical convergence.
+
+The separate decoupled fit also permits a prespecified mixed mask through
+\texttt{mnarz\_control = list(mecha = "mixed", is\_mnar = m)}. All
+coordinates with $m_j=\mathrm{TRUE}$ share the class-specific parameter
+$\rho_k$. Mask factors with $m_j=\mathrm{FALSE}$ are treated as ignorable and
+are omitted from the modeled likelihood. The vector $m$ is supplied by the
+analyst, and all selected coordinates share $\rho_k$. It is therefore a
+ sensitivity specification rather than MNARzj.
+
+\section{Two stages of variable selection}
+
+The ranking stage fits penalized Gaussian mixtures over a grid of mean and
+precision penalties. A variable receives a high score when its component
+means remain nonzero across many valid grid fits. Each candidate value of $K$
+owns its initializer, penalty grid, fitted states, and failure records.
+
+The role-selection stage scans the ranked variables. A variable enters $S$
+when its clustering contribution improves the model criterion. Variables not
+retained in $S$ are assigned to $U$ or $W$ by comparing common regression and
+independent Gaussian models. The stopping parameter \texttt{hsize} is the
+number of consecutive nonpositive criterion increments tolerated before the
+scan stops; an improvement resets the count.
+
+\section{A complete-data example}
+
+The following Gaussian example has two clustering variables, two redundant
+variables, and two independent variables. The generating labels are retained
+only for external evaluation and are not supplied to the estimator.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{library}\hldef{(SelvarMixMNAR)}
+\end{alltt}
+
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{\#> Error in `library()`:\\\#> ! there is no package called 'SelvarMixMNAR'}}\begin{alltt}
+\hlkwd{set.seed}\hldef{(}\hlnum{2025}\hldef{)}
+\hldef{n} \hlkwb{<-} \hlnum{90}
+\hldef{latent_class} \hlkwb{<-} \hlkwd{rep}\hldef{(}\hlnum{1}\hlopt{:}\hlnum{3}\hldef{,} \hlkwc{each} \hldef{= n} \hlopt{/} \hlnum{3}\hldef{)}
+\hldef{signal_1} \hlkwb{<-} \hlkwd{rnorm}\hldef{(n,} \hlkwd{c}\hldef{(}\hlopt{-}\hlnum{2}\hldef{,} \hlnum{0}\hldef{,} \hlnum{2}\hldef{)[latent_class],} \hlnum{0.7}\hldef{)}
+\hldef{signal_2} \hlkwb{<-} \hlkwd{rnorm}\hldef{(n,} \hlkwd{c}\hldef{(}\hlnum{1.5}\hldef{,} \hlopt{-}\hlnum{1.5}\hldef{,} \hlnum{0}\hldef{)[latent_class],} \hlnum{0.7}\hldef{)}
+\hldef{x} \hlkwb{<-} \hlkwd{cbind}\hldef{(}
+ \hlkwc{signal_1} \hldef{= signal_1,}
+ \hlkwc{signal_2} \hldef{= signal_2,}
+ \hlkwc{redundant_1} \hldef{=} \hlnum{0.8} \hlopt{*} \hldef{signal_1} \hlopt{+} \hlkwd{rnorm}\hldef{(n,} \hlkwc{sd} \hldef{=} \hlnum{0.35}\hldef{),}
+ \hlkwc{redundant_2} \hldef{=} \hlopt{-}\hlnum{0.7} \hlopt{*} \hldef{signal_2} \hlopt{+} \hlkwd{rnorm}\hldef{(n,} \hlkwc{sd} \hldef{=} \hlnum{0.35}\hldef{),}
+ \hlkwc{noise_1} \hldef{=} \hlkwd{rnorm}\hldef{(n),}
+ \hlkwc{noise_2} \hldef{=} \hlkwd{rnorm}\hldef{(n)}
+\hldef{)}
+\hlkwd{dim}\hldef{(x)}
+\end{alltt}
+\begin{verbatim}
+#> [1] 90  6
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+
+The known variable order is supplied through \texttt{rank} to isolate the SRUW
+role-selection stage in this synthetic example. Omitting \texttt{rank}
+estimates the penalized ordering from the data.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{set.seed}\hldef{(}\hlnum{2026}\hldef{)}
+\hldef{fit} \hlkwb{<-} \hlkwd{SelvarClustLasso}\hldef{(}
+ \hlkwc{x} \hldef{= x,}
+ \hlkwc{nbcluster} \hldef{=} \hlnum{3}\hldef{,}
+ \hlkwc{models} \hldef{=} \hlsng{"VVI"}\hldef{,}
+ \hlkwc{rank} \hldef{=} \hlkwd{seq_len}\hldef{(}\hlkwd{ncol}\hldef{(x)),}
+ \hlkwc{hsize} \hldef{=} \hlnum{2}\hldef{,}
+ \hlkwc{nbcores} \hldef{=} \hlnum{1}\hldef{,}
+ \hlkwc{workflow} \hldef{=} \hlsng{"imputed_sruw"}\hldef{,}
+ \hlkwc{init_control} \hldef{=} \hlkwd{list}\hldef{(}\hlkwc{method} \hldef{=} \hlsng{"mclust_hc"}\hldef{,} \hlkwc{seed} \hldef{=} \hlnum{2026}\hldef{),}
+ \hlkwc{selection_control} \hldef{=} \hlkwd{list}\hldef{(}\hlkwc{stopping} \hldef{=} \hlsng{"consecutive"}\hldef{,} \hlkwc{seed} \hldef{=} \hlnum{2026}\hldef{)}
+\hldef{)}
+\end{alltt}
+
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{\#> Error in `SelvarClustLasso()`:\\\#> ! could not find function "{}SelvarClustLasso"{}}}\end{kframe}
+\end{knitrout}
+
+The \texttt{imputed\_sruw} workflow fits the ranking and SRUW role model on the
+complete working data without a missingness likelihood. The
+default Mclust covariance model is \texttt{VVI}, a diagonal model with
+component-specific volume and shape.
+
+\section{Decoupled and joint MNARz workflows}
+
+When \texttt{x} is incomplete, \texttt{workflow = "auto"} resolves to
+\texttt{"decoupled\_mnarz"}. Table~\ref{tab:workflows} separates the three
+statistical targets.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Workflow-specific statistical targets.}
+\label{tab:workflows}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.24\linewidth}
+          >{\raggedright\arraybackslash}p{0.68\linewidth}@{}}
+\toprule
+Workflow & Target \\
+\midrule
+\texttt{imputed\_sruw} &
+SRUW ranking and role selection on a completed working data set; no
+missingness likelihood. \\
+\texttt{decoupled\_mnarz} &
+Imputed-data SRUW selection followed by a separate, role-agnostic MNARz
+Gaussian mixture. \\
+\texttt{joint\_mnarz} &
+Observed-data SRUW and MNARz estimation on the original incomplete matrix,
+with forward and reverse role updates scored by total observed-data BIC. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The decoupled estimator reduces computation by separating imputed-data role
+selection from the missingness fit. The joint estimator couples both terms in
+the observed-data objective and consequently requires more repeated mixture
+fits along the role path.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{set.seed}\hldef{(}\hlnum{2027}\hldef{)}
+\hldef{x_miss} \hlkwb{<-} \hldef{x}
+\hldef{rho} \hlkwb{<-} \hlkwd{c}\hldef{(}\hlnum{0.02}\hldef{,} \hlnum{0.08}\hldef{,} \hlnum{0.15}\hldef{)}
+\hldef{mask_probability} \hlkwb{<-} \hlkwd{matrix}\hldef{(}
+ \hldef{rho[latent_class],} \hlkwc{nrow} \hldef{=} \hlkwd{nrow}\hldef{(x_miss),} \hlkwc{ncol} \hldef{=} \hlkwd{ncol}\hldef{(x_miss)}
+\hldef{)}
+\hldef{mask} \hlkwb{<-} \hlkwd{matrix}\hldef{(}\hlkwd{runif}\hldef{(}\hlkwd{length}\hldef{(x_miss)),} \hlkwc{nrow} \hldef{=} \hlkwd{nrow}\hldef{(x_miss))} \hlopt{<} \hldef{mask_probability}
+\hldef{x_miss[mask]} \hlkwb{<-} \hlnum{NA_real_}
+
+\hldef{common} \hlkwb{<-} \hlkwd{list}\hldef{(}
+ \hlkwc{nbcluster} \hldef{=} \hlnum{2}\hlopt{:}\hlnum{4}\hldef{,}
+ \hlkwc{models} \hldef{=} \hlsng{"VVI"}\hldef{,}
+ \hlkwc{num_vals_penalty} \hldef{=} \hlnum{3}\hldef{,}
+ \hlkwc{hsize} \hldef{=} \hlnum{2}\hldef{,}
+ \hlkwc{nbcores} \hldef{=} \hlnum{1}\hldef{,}
+ \hlkwc{init_control} \hldef{=} \hlkwd{list}\hldef{(}\hlkwc{method} \hldef{=} \hlsng{"mclust_hc"}\hldef{,} \hlkwc{seed} \hldef{=} \hlnum{2027}\hldef{),}
+ \hlkwc{selection_control} \hldef{=} \hlkwd{list}\hldef{(}\hlkwc{stopping} \hldef{=} \hlsng{"consecutive"}\hldef{,} \hlkwc{seed} \hldef{=} \hlnum{2027}\hldef{)}
+\hldef{)}
+
+\hldef{fit_decoupled} \hlkwb{<-} \hlkwd{do.call}\hldef{(}
+ \hldef{SelvarClustLasso,}
+ \hlkwd{c}\hldef{(}\hlkwd{list}\hldef{(}\hlkwc{x} \hldef{= x_miss,} \hlkwc{workflow} \hldef{=} \hlsng{"decoupled_mnarz"}\hldef{), common)}
+\hldef{)}
+
+\hldef{fit_joint} \hlkwb{<-} \hlkwd{do.call}\hldef{(}
+ \hldef{SelvarClustLasso,}
+ \hlkwd{c}\hldef{(}\hlkwd{list}\hldef{(}\hlkwc{x} \hldef{= x_miss,} \hlkwc{workflow} \hldef{=} \hlsng{"joint_mnarz"}\hldef{), common)}
+\hldef{)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+Ranking requires one complete working data set. With
+\texttt{use\_copula = TRUE}, the package uses \texttt{gcimputeR}; setting
+\texttt{use\_copula = FALSE} requests \texttt{missRanger}. The imputation
+supplies the ranking stage in both MNARz workflows. The joint fit itself
+returns to the original incomplete matrix.
+
+\section{Initialization and warm paths}
+
+Initialization is data-driven and performed separately for each candidate
+component count. The control \path{init_control$method} accepts the following
+values:
+\begin{itemize}
+\item \path{mclust_hc} and \path{mclust_em};
+\item \path{kmeans} and \path{random};
+\item \path{user} and \path{previous_fit};
+\item \path{deterministic_multistart}.
+\end{itemize}
+Every route produces the same numeric state: component proportions,
+means, covariances, precisions, responsibilities, partition, objective,
+method, seed, and failure status.
+
+Independent cold starts are the ranking default. Warm starts are requested
+through \path{rank_control$warm_start}:
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hldef{fit_warm} \hlkwb{<-} \hlkwd{SelvarClustLasso}\hldef{(}
+ \hldef{x,}
+ \hlkwc{nbcluster} \hldef{=} \hlnum{2}\hlopt{:}\hlnum{4}\hldef{,}
+ \hlkwc{workflow} \hldef{=} \hlsng{"imputed_sruw"}\hldef{,}
+ \hlkwc{nbcores} \hldef{=} \hlnum{1}\hldef{,}
+ \hlkwc{rank_control} \hldef{=} \hlkwd{list}\hldef{(}\hlkwc{warm_start} \hldef{=} \hlsng{"both"}\hldef{)}
+\hldef{)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+An inner warm start continues the graphical-lasso solver between EM
+iterations. An outer warm start passes the complete fitted mixture state
+between adjacent points of a deterministic penalty path. Points within one
+outer path are serial because each depends on its predecessor; parallelism is
+reserved for independent component counts or initializations.
+
+\section{Results and diagnostics}
+
+A fitted \texttt{selvarmix} object provides standard methods:
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hldef{fit}
+\end{alltt}
+
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{\#> Error:\\\#> ! object 'fit' not found}}\begin{alltt}
+\hlkwd{summary}\hldef{(fit)}
+\end{alltt}
+
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{\#> Error:\\\#> ! object 'fit' not found}}\begin{alltt}
+\hlkwd{plot}\hldef{(fit)}
+\end{alltt}
+
+
+{\ttfamily\noindent\bfseries\color{errorcolor}{\#> Error:\\\#> ! object 'fit' not found}}\end{kframe}
+\end{knitrout}
+
+The default plot displays the counts in the $S$/$U$/$W$ role partition; $R$
+is reported separately because it is a subset of $S$. The result also
+contains the selected component count, criterion metadata, partition,
+posterior probabilities, Gaussian and regression parameters, preprocessing
+transformations, and the finite completed working-data matrix. Workflow-specific
+fields preserve the MNARz or joint fit, initialization provenance, penalty
+grids, convergence status, and role-selection stopping diagnostics.
+
+Failed ranking fits remain visible in the recorded grid state. Fits with
+non-finite objectives, invalid component masses, non-positive-definite
+covariances, inconsistent covariance and precision matrices,
+objective decreases, or unsuccessful graphical-lasso termination are not
+scored. This rule prevents numerical failure from appearing as evidence that
+a variable has been shrunk to zero.
+
+\section{Remarks}
+
+\begin{enumerate}
+\item The MNARz mechanism assumes one component-specific missingness
+ probability across coordinates. A scientific application should justify
+ this restriction from its data-collection process.
+\item The optional mixed mask is fixed by the analyst for the separate
+ decoupled fit, and estimation conditions on that partition of the
+ coordinates.
+\item \texttt{joint\_mnarz} requires more computation than
+ \texttt{decoupled\_mnarz}. Comparisons of clustering, selection, and
+ imputation accuracy should use replicated designs matched to the scientific
+ setting.
+\end{enumerate}
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}

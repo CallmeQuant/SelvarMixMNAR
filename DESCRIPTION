@@ -1,0 +1,40 @@
+Package: SelvarMixMNAR
+Type: Package
+Title: Variable Selection in Model-Based Clustering with Missing not at
+        Random Data
+Version: 0.1.0.9000
+Date: 2026-07-15
+Authors@R: c(
+    person("Mohammed", "Sedki", role = c("aut", "cre"),
+           email = "mohammed.sedki@u-psud.fr",
+           comment = "Original SelvarMix 1.2.1 author and legacy maintainer"),
+    person("Gilles", "Celeux", role = "aut",
+           comment = "Original SelvarMix 1.2.1 author"),
+    person("Cathy", "Maugis-Rabusseau", role = "aut",
+           comment = "Original SelvarMix 1.2.1 author")
+    )
+Description: Extends the archived 'SelvarMix' 1.2.1 implementation for
+             regularized variable selection in model-based clustering.
+             Variables are ranked with penalized mixture models
+             and assigned clustering, regression, redundant, or independent
+             roles. Missing values can be handled with a parsimonious
+             class-only MNARz mechanism using either a decoupled SRUW workflow
+             or an explicit joint SRUW-MNARz workflow.
+License: GPL (>= 3)
+Encoding: UTF-8
+Depends: R (>= 4.3.0)
+Imports: Rcpp (>= 0.11.1), methods, stats, utils, parallel, glassoFast
+        (>= 1.0.1), Rmixmod, mclust, matrixStats, igraph
+LinkingTo: Rcpp, RcppArmadillo
+Suggests: testthat (>= 3.0.0), gcimputeR, missRanger, shapes, knitr
+Remotes: udellgroup/gcimputeR@0d7c0e6fd3be9ff7d1c3a3f8100d91e721dad468
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+NeedsCompilation: yes
+Packaged: 2026-07-15 17:21:44 UTC; Binh Ho
+Author: Mohammed Sedki [aut, cre] (Original SelvarMix 1.2.1 author and legacy
+    maintainer),
+  Gilles Celeux [aut] (Original SelvarMix 1.2.1 author),
+  Cathy Maugis-Rabusseau [aut] (Original SelvarMix 1.2.1 author)
+  Binh H. Ho [aut] (SelvarMixMNAR 0.1.0.9000 author)
+Maintainer: Binh H. Ho <binhho64@umd.edu>

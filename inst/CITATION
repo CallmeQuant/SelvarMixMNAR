@@ -1,0 +1,21 @@
+citHeader("To cite SelvarMixMNAR in publications, use:")
+
+bibentry(
+  bibtype = "InProceedings",
+  key = "ho2025unifiedmbcmnar",
+  title = paste(
+    "A Unified Framework for Variable Selection in Model-Based Clustering",
+    "with Missing Not at Random"
+  ),
+  author = c(
+    person(given = "Binh H.", family = "Ho"),
+    person(given = "Long Nguyen", family = "Chi"),
+    person(given = "TrungTin", family = "Nguyen"),
+    person(given = "Binh T.", family = "Nguyen"),
+    person(given = "Van Ha", family = "Hoang"),
+    person(given = "Christopher", family = "Drovandi")
+  ),
+  booktitle = "Advances in Neural Information Processing Systems",
+  year = "2025",
+  note = "39th Conference on Neural Information Processing Systems (NeurIPS 2025)"
+)

@@ -1,0 +1,302 @@
+\documentclass[10pt]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{array,booktabs,float}
+\usepackage[margin=1in]{geometry}
+\usepackage[hidelinks]{hyperref}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.65em}
+\setlength{\emergencystretch}{2em}
+
+\title{Variable Selection and MNARz Clustering\\
+with \texttt{SelvarMixMNAR}}
+\author{}
+\date{}
+
+%\VignetteIndexEntry{Variable Selection and MNARz Clustering with SelvarMixMNAR}
+%\VignetteEngine{knitr::knitr}
+%\VignetteEncoding{UTF-8}
+
+\begin{document}
+
+\maketitle
+
+<<setup, include=FALSE>>=
+knitr::opts_chunk$set(
+ collapse = TRUE,
+ comment = "#>",
+ fig.width = 7,
+ fig.height = 4
+)
+options(width = 78)
+@
+
+\texttt{SelvarMixMNAR} is the direct R implementation accompanying the
+NeurIPS 2025 paper \emph{A Unified Framework for Variable Selection in
+Model-Based Clustering with Missing Not at Random}
+\cite{ho2025unifiedmbcmnar}. The package combines a penalized Gaussian-mixture
+ranking, SRUW variable roles, and a MNARz missingness model.
+
+For incomplete data, \texttt{decoupled\_mnarz} estimates SRUW roles from a
+completed working matrix before fitting an MNARz mixture, whereas
+\texttt{joint\_mnarz} estimates the SRUW and missingness terms under one
+observed-data criterion.
+
+\section{SRUW roles and the fitted MNARz mechanism}
+
+For observation $Y_i \in \mathbb{R}^p$, the SRUW factorization uses three
+disjoint role sets and one predictor subset:
+
+\begin{itemize}
+\item $S$: variables that define the Gaussian mixture;
+\item $R \subseteq S$: clustering variables used as predictors of redundant
+ variables;
+\item $U$: redundant variables modeled by a common Gaussian regression on
+ $Y_i^R$;
+\item $W$: variables modeled independently of the clustering block.
+\end{itemize}
+
+Writing $K$ for the number of mixture components, the factorization has the
+form
+\[
+f(Y_i)
+= f_{\mathrm{clust}}(Y_i^S \mid K,m)
+ f_{\mathrm{reg}}(Y_i^U \mid Y_i^R,r)
+ f_{\mathrm{indep}}(Y_i^W \mid l).
+\]
+Here $m$, $r$, and $l$ index the covariance models for the clustering,
+regression, and independent blocks, respectively.
+
+The fitted missingness class is MNARz. If $C_{ij}=1$ denotes a missing entry
+and $Z_i=k$ denotes latent component membership, then
+\[
+\Pr(C_{ij}=1 \mid Z_i=k)=\rho_k.
+\]
+Thus each component has one missingness probability shared across variables.
+MNARy, in which missingness depends directly on an unobserved value, and
+MNARzj, in which the class effect varies by coordinate, require different
+likelihoods. Identifiability relies on the MNARz assumptions stated in the
+accompanying paper in addition to numerical convergence.
+
+The separate decoupled fit also permits a prespecified mixed mask through
+\texttt{mnarz\_control = list(mecha = "mixed", is\_mnar = m)}. All
+coordinates with $m_j=\mathrm{TRUE}$ share the class-specific parameter
+$\rho_k$. Mask factors with $m_j=\mathrm{FALSE}$ are treated as ignorable and
+are omitted from the modeled likelihood. The vector $m$ is supplied by the
+analyst, and all selected coordinates share $\rho_k$. It is therefore a
+ sensitivity specification rather than MNARzj.
+
+\section{Two stages of variable selection}
+
+The ranking stage fits penalized Gaussian mixtures over a grid of mean and
+precision penalties. A variable receives a high score when its component
+means remain nonzero across many valid grid fits. Each candidate value of $K$
+owns its initializer, penalty grid, fitted states, and failure records.
+
+The role-selection stage scans the ranked variables. A variable enters $S$
+when its clustering contribution improves the model criterion. Variables not
+retained in $S$ are assigned to $U$ or $W$ by comparing common regression and
+independent Gaussian models. The stopping parameter \texttt{hsize} is the
+number of consecutive nonpositive criterion increments tolerated before the
+scan stops; an improvement resets the count.
+
+\section{A complete-data example}
+
+The following Gaussian example has two clustering variables, two redundant
+variables, and two independent variables. The generating labels are retained
+only for external evaluation and are not supplied to the estimator.
+
+<<data>>=
+library(SelvarMixMNAR)
+set.seed(2025)
+n <- 90
+latent_class <- rep(1:3, each = n / 3)
+signal_1 <- rnorm(n, c(-2, 0, 2)[latent_class], 0.7)
+signal_2 <- rnorm(n, c(1.5, -1.5, 0)[latent_class], 0.7)
+x <- cbind(
+ signal_1 = signal_1,
+ signal_2 = signal_2,
+ redundant_1 = 0.8 * signal_1 + rnorm(n, sd = 0.35),
+ redundant_2 = -0.7 * signal_2 + rnorm(n, sd = 0.35),
+ noise_1 = rnorm(n),
+ noise_2 = rnorm(n)
+)
+dim(x)
+@
+
+The known variable order is supplied through \texttt{rank} to isolate the SRUW
+role-selection stage in this synthetic example. Omitting \texttt{rank}
+estimates the penalized ordering from the data.
+
+<<complete-fit>>=
+set.seed(2026)
+fit <- SelvarClustLasso(
+ x = x,
+ nbcluster = 3,
+ models = "VVI",
+ rank = seq_len(ncol(x)),
+ hsize = 2,
+ nbcores = 1,
+ workflow = "imputed_sruw",
+ init_control = list(method = "mclust_hc", seed = 2026),
+ selection_control = list(stopping = "consecutive", seed = 2026)
+)
+@
+
+The \texttt{imputed\_sruw} workflow fits the ranking and SRUW role model on the
+complete working data without a missingness likelihood. The
+default Mclust covariance model is \texttt{VVI}, a diagonal model with
+component-specific volume and shape.
+
+\section{Decoupled and joint MNARz workflows}
+
+When \texttt{x} is incomplete, \texttt{workflow = "auto"} resolves to
+\texttt{"decoupled\_mnarz"}. Table~\ref{tab:workflows} separates the three
+statistical targets.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Workflow-specific statistical targets.}
+\label{tab:workflows}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.24\linewidth}
+          >{\raggedright\arraybackslash}p{0.68\linewidth}@{}}
+\toprule
+Workflow & Target \\
+\midrule
+\texttt{imputed\_sruw} &
+SRUW ranking and role selection on a completed working data set; no
+missingness likelihood. \\
+\texttt{decoupled\_mnarz} &
+Imputed-data SRUW selection followed by a separate, role-agnostic MNARz
+Gaussian mixture. \\
+\texttt{joint\_mnarz} &
+Observed-data SRUW and MNARz estimation on the original incomplete matrix,
+with forward and reverse role updates scored by total observed-data BIC. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The decoupled estimator reduces computation by separating imputed-data role
+selection from the missingness fit. The joint estimator couples both terms in
+the observed-data objective and consequently requires more repeated mixture
+fits along the role path.
+
+<<missing-data, eval=FALSE>>=
+set.seed(2027)
+x_miss <- x
+rho <- c(0.02, 0.08, 0.15)
+mask_probability <- matrix(
+ rho[latent_class], nrow = nrow(x_miss), ncol = ncol(x_miss)
+)
+mask <- matrix(runif(length(x_miss)), nrow = nrow(x_miss)) < mask_probability
+x_miss[mask] <- NA_real_
+
+common <- list(
+ nbcluster = 2:4,
+ models = "VVI",
+ num_vals_penalty = 3,
+ hsize = 2,
+ nbcores = 1,
+ init_control = list(method = "mclust_hc", seed = 2027),
+ selection_control = list(stopping = "consecutive", seed = 2027)
+)
+
+fit_decoupled <- do.call(
+ SelvarClustLasso,
+ c(list(x = x_miss, workflow = "decoupled_mnarz"), common)
+)
+
+fit_joint <- do.call(
+ SelvarClustLasso,
+ c(list(x = x_miss, workflow = "joint_mnarz"), common)
+)
+@
+
+Ranking requires one complete working data set. With
+\texttt{use\_copula = TRUE}, the package uses \texttt{gcimputeR}; setting
+\texttt{use\_copula = FALSE} requests \texttt{missRanger}. The imputation
+supplies the ranking stage in both MNARz workflows. The joint fit itself
+returns to the original incomplete matrix.
+
+\section{Initialization and warm paths}
+
+Initialization is data-driven and performed separately for each candidate
+component count. The control \path{init_control$method} accepts the following
+values:
+\begin{itemize}
+\item \path{mclust_hc} and \path{mclust_em};
+\item \path{kmeans} and \path{random};
+\item \path{user} and \path{previous_fit};
+\item \path{deterministic_multistart}.
+\end{itemize}
+Every route produces the same numeric state: component proportions,
+means, covariances, precisions, responsibilities, partition, objective,
+method, seed, and failure status.
+
+Independent cold starts are the ranking default. Warm starts are requested
+through \path{rank_control$warm_start}:
+
+<<warm-controls, eval=FALSE>>=
+fit_warm <- SelvarClustLasso(
+ x,
+ nbcluster = 2:4,
+ workflow = "imputed_sruw",
+ nbcores = 1,
+ rank_control = list(warm_start = "both")
+)
+@
+
+An inner warm start continues the graphical-lasso solver between EM
+iterations. An outer warm start passes the complete fitted mixture state
+between adjacent points of a deterministic penalty path. Points within one
+outer path are serial because each depends on its predecessor; parallelism is
+reserved for independent component counts or initializations.
+
+\section{Results and diagnostics}
+
+A fitted \texttt{selvarmix} object provides standard methods:
+
+<<methods, results='hide', fig.keep='none'>>=
+fit
+summary(fit)
+plot(fit)
+@
+
+The default plot displays the counts in the $S$/$U$/$W$ role partition; $R$
+is reported separately because it is a subset of $S$. The result also
+contains the selected component count, criterion metadata, partition,
+posterior probabilities, Gaussian and regression parameters, preprocessing
+transformations, and the finite completed working-data matrix. Workflow-specific
+fields preserve the MNARz or joint fit, initialization provenance, penalty
+grids, convergence status, and role-selection stopping diagnostics.
+
+Failed ranking fits remain visible in the recorded grid state. Fits with
+non-finite objectives, invalid component masses, non-positive-definite
+covariances, inconsistent covariance and precision matrices,
+objective decreases, or unsuccessful graphical-lasso termination are not
+scored. This rule prevents numerical failure from appearing as evidence that
+a variable has been shrunk to zero.
+
+\section{Remarks}
+
+\begin{enumerate}
+\item The MNARz mechanism assumes one component-specific missingness
+ probability across coordinates. A scientific application should justify
+ this restriction from its data-collection process.
+\item The optional mixed mask is fixed by the analyst for the separate
+ decoupled fit, and estimation conditions on that partition of the
+ coordinates.
+\item \texttt{joint\_mnarz} requires more computation than
+ \texttt{decoupled\_mnarz}. Comparisons of clustering, selection, and
+ imputation accuracy should use replicated designs matched to the scientific
+ setting.
+\end{enumerate}
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}
