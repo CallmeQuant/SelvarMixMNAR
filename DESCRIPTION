@@ -1,41 +1,80 @@
 Package: SelvarMixMNAR
 Type: Package
-Title: Variable Selection in Model-Based Clustering with Missing not at
-        Random Data
+Title: Variable Selection in Model-Based Clustering with MNAR Data
 Version: 0.1.0.9000
-Date: 2026-07-15
 Authors@R: c(
-    person("Mohammed", "Sedki", role = c("aut", "cre"),
-           email = "mohammed.sedki@u-psud.fr",
-           comment = "Original SelvarMix 1.2.1 author and legacy maintainer"),
-    person("Gilles", "Celeux", role = "aut",
-           comment = "Original SelvarMix 1.2.1 author"),
-    person("Cathy", "Maugis-Rabusseau", role = "aut",
-           comment = "Original SelvarMix 1.2.1 author")
+    person(
+      given = "Binh H.",
+      family = "Ho",
+      email = "binhho64@umd.edu",
+      role = c("aut", "cre")
+    ),
+    person(given = "Long", family = "Nguyen Chi", role = "aut"),
+    person(given = "TrungTin", family = "Nguyen", role = "aut"),
+    person(given = "Binh T.", family = "Nguyen", role = "aut"),
+    person(given = "Van Ha", family = "Hoang", role = "aut"),
+    person(given = "Christopher", family = "Drovandi", role = "aut"),
+    person(
+      given = "Mohammed",
+      family = "Sedki",
+      role = "aut",
+      comment = "Author of the original SelvarMix package"
+    ),
+    person(
+      given = "Gilles",
+      family = "Celeux",
+      role = "aut",
+      comment = "Author of the original SelvarMix package"
+    ),
+    person(
+      given = "Cathy",
+      family = "Maugis-Rabusseau",
+      role = "aut",
+      comment = "Author of the original SelvarMix package"
     )
-Description: Extends the archived 'SelvarMix' 1.2.1 implementation for
-             regularized variable selection in model-based clustering.
-             Variables are ranked with penalized mixture models
-             and assigned clustering, regression, redundant, or independent
-             roles. Missing values can be handled with a parsimonious
-             class-only MNARz mechanism using either a decoupled SRUW workflow
-             or an explicit joint SRUW-MNARz workflow.
+  )
+Description: Extends 'SelvarMix' to regularized variable selection in Gaussian
+    model-based clustering with complete or incomplete data. Variables are
+    ranked using penalized Gaussian mixture models and assigned to the SRUW
+    roles: clustering-relevant variables, redundant variables explained by a
+    subset of the relevant variables, and independent noise variables.
+    Missing values may be missing not at random (MNAR) and modeled through a
+    parsimonious class-only MNARz mechanism, under which each mixture component
+    has one missingness probability shared across variables. The missingness
+    model may be fitted after SRUW role selection or jointly with the SRUW model.
 License: GPL (>= 3)
 Encoding: UTF-8
-Depends: R (>= 4.3.0)
-Imports: Rcpp (>= 0.11.1), methods, stats, utils, parallel, glassoFast
-        (>= 1.0.1), Rmixmod, mclust, matrixStats, igraph
-LinkingTo: Rcpp, RcppArmadillo
-Suggests: testthat (>= 3.0.0), gcimputeR, missRanger, shapes, knitr
-Remotes: udellgroup/gcimputeR@0d7c0e6fd3be9ff7d1c3a3f8100d91e721dad468
-VignetteBuilder: knitr
+Depends:
+    R (>= 4.3.0)
+Imports:
+    glassoFast (>= 1.0.1),
+    igraph,
+    matrixStats,
+    mclust,
+    methods,
+    parallel,
+    Rcpp (>= 0.11.1),
+    Rmixmod,
+    stats,
+    utils
+LinkingTo:
+    Rcpp,
+    RcppArmadillo
+Suggests:
+    gcimputeR,
+    knitr,
+    missRanger,
+    rmarkdown,
+    shapes,
+    testthat (>= 3.0.0)
+Remotes:
+    udellgroup/gcimputeR@0d7c0e6fd3be9ff7d1c3a3f8100d91e721dad468
+VignetteBuilder:
+    knitr,
+    rmarkdown
 Config/testthat/edition: 3
 NeedsCompilation: yes
-Packaged: 2026-07-15 17:21:44 UTC; Binh Ho
-Author: Mohammed Sedki [aut, cre] (Original SelvarMix 1.2.1 author and legacy
-    maintainer),
-  Gilles Celeux [aut] (Original SelvarMix 1.2.1 author),
-  Cathy Maugis-Rabusseau [aut] (Original SelvarMix 1.2.1 author)
-  Binh H. Ho, Long Nguyen Chi, TrungTin Nguyen, Binh T. Nguyen, Van Ha Hoang, 
-  and Christopher Drovandi [aut] (SelvarMixMNAR 0.1.0.9000 author)
-Maintainer: Binh H. Ho <binhho64@umd.edu>
+URL:
+    https://github.com/CallmeQuant/SelvarMixMNAR,
+    https://arxiv.org/abs/2505.19093
+BugReports: https://github.com/CallmeQuant/SelvarMixMNAR/issues

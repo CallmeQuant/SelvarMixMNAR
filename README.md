@@ -1,36 +1,18 @@
 # SelvarMixMNAR
 
-`SelvarMixMNAR` fits Gaussian model-based clustering with variable selection
-when observations may be missing not at random. It is the direct R
-implementation accompanying the NeurIPS 2025 paper *A Unified Framework for
-Variable Selection in Model-Based Clustering with Missing Not at Random* by
-Binh H. Ho, Long Nguyen Chi, TrungTin Nguyen, Binh T. Nguyen, Van Ha Hoang,
-and Christopher Drovandi ([see arxiv version here](https://arxiv.org/abs/2505.19093)).
+`SelvarMixMNAR` provides Gaussian model-based clustering with variable selection for complete and incomplete data, including a class-dependent MNARz missingness model. It implements and extends the methods developed in the NeurIPS 2025 paper *A Unified Framework for Variable Selection in Model-Based Clustering with Missing Not at Random* by Binh H. Ho, Long Nguyen Chi, TrungTin Nguyen, Binh T. Nguyen, Van Ha Hoang, and Christopher Drovandi ([arXiv preprint](https://arxiv.org/abs/2505.19093)).
 
-The package combines three statistical components:
+The package combines three components:
 
-- a penalized Gaussian-mixture ranking based on sparse component means and
-  precision matrices;
-- an SRUW decomposition, in which variables are clustering-relevant (`S`),
-  redundant (`U`) through a regression on `R` contained in `S`, or independent
-  noise (`W`);
-- a parsimonious MNARz model with one missingness probability for each latent
-  component, shared across variables.
+- a regularized Gaussian-mixture procedure that ranks variables using sparse component means and precision matrices;
+- the SRUW variable-role model, which partitions variables into clustering variables (`S`), redundant variables (`U`) explained by a subset `R` of `S`, and independent variables (`W`);
+- a parsimonious MNARz model in which each latent component has one missingness probability shared across the modeled variables.
 
-Under class-only MNARz, each latent component has one missingness probability
-shared across variables. The fitting interface is restricted to this
-parsimonious mechanism; MNARy and variable-specific MNARzj require different
-likelihoods. For sensitivity analyses in the separate decoupled fit,
-`mnarz_control$mecha = "mixed"` accepts a user-specified logical `is_mnar`
-mask. Coordinates marked `TRUE` share the same class-specific probability
-`rho_k`; mask factors for coordinates marked `FALSE` are treated as ignorable
-and omitted from the modeled likelihood. The analyst fixes the mask, and all
-selected coordinates share the same class effect; this is a class-only
-sensitivity model rather than MNARzj.
+The fitted missingness model is class-only MNARz. The package does not fit MNARy mechanisms or the variable-specific `MNARz_j` model. In the decoupled workflow, `mnarz_control$mecha = "mixed"` accepts a fixed logical mask `is_mnar`. Missingness indicators for coordinates marked `TRUE` contribute to the MNARz likelihood and share the component-specific probability `rho_k`; coordinates marked `FALSE` are treated as ignorable. Thus, this option provides a class-only sensitivity analysis rather than an `MNARz_j` model.
 
 ## Installation
 
-Install the development version directly from GitHub:
+Install the development version from GitHub:
 
 ```r
 install.packages("remotes")
@@ -42,19 +24,18 @@ remotes::install_github(
 library(SelvarMixMNAR)
 ```
 
-Setting `dependencies = TRUE` installs the optional packages used by the
-missing-data and covariance-distance workflows. It also resolves
-`gcimputeR` at the commit pinned in `DESCRIPTION`. Installation compiles the
-package's C++ source, so Windows users need the version of Rtools that matches
-their R installation.
+Using `dependencies = TRUE` installs the packages required by the optional missing-data and covariance-distance workflows. The required `gcimputeR` revision is pinned in `DESCRIPTION`. Because the package contains C++ source code, Windows users need the version of Rtools corresponding to their R installation.
 
-Users who already have `devtools` installed may equivalently run
-`devtools::install_github("CallmeQuant/SelvarMixMNAR", dependencies = TRUE)`.
+The equivalent `devtools` command is
 
-### Installation from a local checkout
+```r
+devtools::install_github(
+  "CallmeQuant/SelvarMixMNAR",
+  dependencies = TRUE
+)
+```
 
-Package developers can install a local checkout by supplying the directory
-that contains `DESCRIPTION`:
+A local source tree can be installed from the directory containing `DESCRIPTION`:
 
 ```r
 remotes::install_local(
@@ -64,25 +45,11 @@ remotes::install_local(
 )
 ```
 
-For release validation, build from the parent directory and install the
-resulting source archive:
+For incomplete data, the ranking stage first constructs a completed working matrix. The default imputation method uses `gcimputeR`; set `use_copula = FALSE` to use `missRanger`. Non-Euclidean covariance distances require the optional `shapes` package. The Euclidean/Frobenius distance is implemented internally.
 
-```sh
-R CMD build SelvarMixMNAR
-R CMD INSTALL SelvarMixMNAR_0.1.0.9000.tar.gz
-```
+## Quick start
 
-Incomplete-data fits require an imputation method for the ranking stage. The
-default uses `gcimputeR`; `missRanger` is available through
-`use_copula = FALSE`. Non-Euclidean covariance distances require the optional
-`shapes` package. The default Euclidean/Frobenius distance is implemented
-internally.
-
-## A first example
-
-The following example has two clustering variables, two redundant
-variables, and two independent noise variables. `latent_class` is retained
-only for external evaluation and is not passed to the estimator.
+The following example contains two clustering variables, two redundant variables, and two independent noise variables. The simulated class labels are used only for external evaluation and are not supplied to the estimator.
 
 ```r
 library(SelvarMixMNAR)
@@ -90,8 +57,10 @@ library(SelvarMixMNAR)
 set.seed(2025)
 n <- 90
 latent_class <- rep(1:3, each = n / 3)
+
 signal_1 <- rnorm(n, c(-2, 0, 2)[latent_class], 0.7)
 signal_2 <- rnorm(n, c(1.5, -1.5, 0)[latent_class], 0.7)
+
 x <- cbind(
   signal_1 = signal_1,
   signal_2 = signal_2,
@@ -117,40 +86,38 @@ summary(fit)
 plot(fit)
 ```
 
-The result stores the disjoint role partition `S`/`U`/`W`, the regression
-predictor subset `R` contained in `S`, the selected component count, posterior
-probabilities, partition, fitted parameters, imputed data when applicable,
-and numerical diagnostics.
+The fitted object contains the disjoint role sets `S`, `U`, and `W`; the regression subset `R` of `S`; the selected number of components; posterior component-membership probabilities; cluster assignments; fitted parameters; the completed data when applicable; and numerical diagnostics.
 
-## Missing-data workflows
+## Incomplete-data workflows
 
-For an incomplete input, `workflow = "auto"` resolves to the decoupled
-workflow. The available targets are:
+For incomplete input, `workflow = "auto"` selects `decoupled_mnarz`. Three workflows are available:
 
-| Workflow | Statistical operation |
+| Workflow | Description |
 |---|---|
-| `imputed_sruw` | Rank variables and fit the SRUW model on a completed working data set without a missingness likelihood. |
-| `decoupled_mnarz` | Select SRUW roles on the completed working data, then fit a separate role-agnostic MNARz mixture. This is the default for incomplete input. |
-| `joint_mnarz` | Rank on a completed matrix, then fit the SRUW and class-only MNARz terms jointly to the original incomplete matrix. Forward and reverse role updates are scored by total observed-data BIC. |
+| `imputed_sruw` | Completes the data, then performs variable ranking and SRUW role selection without modeling the missingness process. |
+| `decoupled_mnarz` | Selects SRUW roles on the completed data and then fits an MNARz mixture separately to the original incomplete data. This is the default for incomplete input. |
+| `joint_mnarz` | Uses a completed matrix for ranking, then jointly scores the SRUW role model and the class-only MNARz model on the original incomplete data. Forward and reverse role updates are compared by observed-data BIC. |
 
-The decoupled estimator separates imputed-data role selection from MNARz
-estimation and is computationally less expensive. The joint estimator couples
-the SRUW and missingness terms within one observed-data objective. The
-appropriate choice depends on whether computational economy or joint modeling
-of variable roles and missingness is the primary consideration.
+Use `decoupled_mnarz` for a less expensive two-stage analysis. Use `joint_mnarz` when variable-role decisions should be based on the same observed-data criterion as the MNARz fit.
 
 ```r
 set.seed(2025)
 x_miss <- x
 rho <- c(0.02, 0.08, 0.15)
+
 mask_probability <- matrix(
-  rho[latent_class], nrow = nrow(x_miss), ncol = ncol(x_miss)
+  rho[latent_class],
+  nrow = nrow(x_miss),
+  ncol = ncol(x_miss)
 )
-mask <- matrix(runif(length(x_miss)), nrow = nrow(x_miss)) < mask_probability
+mask <- matrix(
+  runif(length(x_miss)),
+  nrow = nrow(x_miss)
+) < mask_probability
 x_miss[mask] <- NA_real_
 
 fit_decoupled <- SelvarClustLasso(
-  x_miss,
+  x = x_miss,
   nbcluster = 2:4,
   workflow = "decoupled_mnarz",
   models = "VVI",
@@ -160,7 +127,7 @@ fit_decoupled <- SelvarClustLasso(
 )
 
 fit_joint <- SelvarClustLasso(
-  x_miss,
+  x = x_miss,
   nbcluster = 2:4,
   workflow = "joint_mnarz",
   models = "VVI",
@@ -170,52 +137,45 @@ fit_joint <- SelvarClustLasso(
 )
 ```
 
-## Initialization, penalty paths, and failures
+## Initialization and penalty paths
 
-Gaussian initializers are constructed in R and passed to native routines as a
-common numeric state. Available methods include hierarchical Mclust,
-Mclust EM, k-means, random starts, user-supplied state, a previous fit, and
-deterministic multistart. Hierarchical Mclust is the data-driven default;
-alternative initializers support sensitivity analysis when the mixture
-likelihood has several well-separated local maxima.
+Available initialization methods include hierarchical clustering from `mclust`, `mclust` EM, k-means, random starts, a user-supplied state, a previous fit, and deterministic multistart initialization. Hierarchical `mclust` initialization is the default. Alternative initializations are useful for sensitivity analysis because Gaussian-mixture likelihoods are non-convex.
 
-Penalty-grid fits are cold by default. `rank_control$warm_start` may be
-`"inner"`, `"outer"`, or `"both"`. Inner continuation warm-starts the
-graphical-lasso solver between EM iterations. Outer continuation transfers the
-complete fitted state along a deterministic serial penalty path. Dependent
-points on one warm path are never parallelized.
+Penalty-grid points are fitted independently by default. Set `rank_control$warm_start` to `"inner"`, `"outer"`, or `"both"` to enable continuation:
 
-Nonconverged fits and fits with a non-finite objective, a non-positive-definite
-covariance, or an objective decrease are omitted from the ranking
-score. Their grid positions remain recorded rather than being replaced by
-zero activity. A component-count candidate is scored only when the retained
-grid fraction reaches `min_scorable_fraction`.
+- `"inner"` warm-starts the graphical-lasso solver between EM iterations;
+- `"outer"` carries the complete fitted state along a deterministic penalty path;
+- `"both"` applies both forms of continuation.
 
-## Statistical scope
+Points on the same continuation path are evaluated serially.
 
-- The input variables must be numeric, and the clustering model is
-  Gaussian.
-- MNARz assumes that missingness depends on latent component membership
-  through one component-specific probability shared across coordinates.
-- The optional mixed mask is specified by the analyst for the separate
-  decoupled fit, and estimation conditions on that fixed partition.
-- `joint_mnarz` is typically more expensive than the decoupled workflow.
-- Mclust and Rmixmod are the supported SRUW backends. MixAll tokens stop before
-  native execution because an STK failure may terminate the R session. The
-  default is Mclust with model `VVI`.
+A grid fit is excluded from the ranking score if it does not converge, has a non-finite objective, produces a non-positive-definite covariance matrix, or decreases the objective. Excluded grid points remain available in the diagnostics and are not treated as zero-activity fits. A candidate number of components is scored only when the fraction of valid grid fits is at least `min_scorable_fraction`.
 
-See the package vignette, `vignette("selvarmix-mnar")`, for the model
-factorization, workflow interpretation, and reproducible control settings.
+## Scope and limitations
+
+- Input variables must be numeric, and the clustering model is Gaussian.
+- The MNARz model is class-only: all modeled coordinates share one missingness probability within each latent component.
+- Under `mnarz_control$mecha = "mixed"`, the `is_mnar` mask is fixed by the analyst; the package does not estimate which coordinates are MNAR.
+- The default SRUW backend is `mclust` with covariance model `VVI`.
+
+For the model factorization, interpretation of the workflows, and reproducible control settings, see
+
+```r
+vignette("selvarmix-mnar")
+```
 
 ## Relationship to SelvarMix
 
-The penalized ranking and SRUW role-selection layer descends from SelvarMix
-1.2.1 by Mohammed Sedki, Gilles Celeux, and Cathy Maugis-Rabusseau. This
-package retains the principal clustering function names while adding
-class-only MNARz workflows, numerical diagnostics, and reproducible
-initialization and path metadata.
+The regularized ranking and SRUW role-selection procedures build on `SelvarMix` 1.2.1 by Mohammed Sedki, Gilles Celeux, and Cathy Maugis-Rabusseau. The SRUW formulation originates in the variable-role model of Maugis, Celeux, and Martin-Magniette, while the regularized ranking follows the later SelvarMix methodology of Celeux, Maugis-Rabusseau, and Sedki.
+
+`SelvarMixMNAR` retains the main clustering interface of `SelvarMix` and adds class-only MNARz estimation, incomplete-data workflows, numerical diagnostics, and initialization and penalty-path metadata.
 
 ## Citation and license
 
-Use `citation("SelvarMixMNAR")` to cite the accompanying paper. The package is
-distributed under GPL (>= 3).
+Use
+
+```r
+citation("SelvarMixMNAR")
+```
+
+to obtain the recommended citation. `SelvarMixMNAR` is distributed under GPL (>= 3).

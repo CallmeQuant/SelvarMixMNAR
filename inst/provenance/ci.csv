@@ -1,6 +1,0 @@
-job,operating_system,R_version,dependency_scope,runner_or_container,check_arguments,configuration_status,recorded_on
-required-windows,Windows,R release,"Depends, Imports, LinkingTo, testthat, knitr",windows-latest,"--as-cran; manual and vignette enabled",configured_not_run,2026-07-15
-required-linux,Linux,R release,"Depends, Imports, LinkingTo, testthat, knitr",ubuntu-latest,"--as-cran; manual and vignette enabled",configured_not_run,2026-07-15
-required-oldest-linux,Linux,R 4.3,"Depends, Imports, LinkingTo, testthat, knitr",ubuntu-latest,"--as-cran; manual and vignette enabled",configured_not_run,2026-07-15
-full-suggests,Linux,R release,all Suggests including pinned gcimputeR,ubuntu-latest,"--as-cran; manual and vignette enabled; _R_CHECK_FORCE_SUGGESTS_=true",configured_not_run,2026-07-15
-clang-asan-ubsan,Linux,R-devel,"Depends, Imports, LinkingTo, testthat",ghcr.io/r-hub/containers/clang-asan@sha256:250dd66316c7c2e31d88f821c54832e8aacac6fd066f3751363757ec6576fcfb,"--no-manual --ignore-vignettes --as-cran",configured_not_run,2026-07-15
